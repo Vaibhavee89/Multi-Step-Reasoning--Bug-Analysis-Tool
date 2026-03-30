@@ -45,3 +45,24 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Backend specific
+backend/venv/
+backend/__pycache__/
+backend/.env
+backend/temp_repos/
+backend/*.db
+
+# Frontend specific
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.vite/
+frontend/.DS_Store
