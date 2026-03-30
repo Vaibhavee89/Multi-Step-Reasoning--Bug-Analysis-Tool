@@ -66,3 +66,11 @@ frontend/yarn-debug.log*
 frontend/yarn-error.log*
 frontend/.vite/
 frontend/.DS_Store
+
+# Docker
+.env
+.env.local
+docker-compose.override.yml
+*.pid
+*.seed
+*.pid.lock
