@@ -24,6 +24,13 @@ sentence-transformers==3.3.1
 bandit==1.8.0
 safety==3.2.11
 
+# HTTP and Web Scraping for Security Intelligence
+requests==2.31.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+feedparser==6.0.11
+cachetools==5.3.2
+
 # Utilities
 rich==13.9.4
 pydantic==2.10.3

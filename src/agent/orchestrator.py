@@ -14,6 +14,9 @@ from ..tools.ast_analyzer import ASTAnalyzerTool
 from ..tools.static_analyzer import StaticAnalyzerTool
 from ..tools.code_search import CodeSearchTool
 from ..tools.git_tools import GitAnalyzerTool
+from ..tools.security_scanner import SecurityScannerTool
+from ..tools.vulnerability_tracker import VulnerabilityTrackerTool
+from ..tools.trend_analyzer import TrendAnalyzerTool
 
 
 class CodeAnalysisAgent:
@@ -136,7 +139,19 @@ class CodeAnalysisAgent:
         search_tool = CodeSearchTool(repo_path=repo_path_str)
         git_tool = GitAnalyzerTool(repo_path=repo_path_str)
 
-        return [ast_tool, static_tool, search_tool, git_tool]
+        # Security tools
+        security_scanner = SecurityScannerTool(repo_path=repo_path_str)
+        vuln_tracker = VulnerabilityTrackerTool(repo_path=repo_path_str)
+
+        tools = [ast_tool, static_tool, search_tool, git_tool,
+                 security_scanner, vuln_tracker]
+
+        # Optional: Trend analyzer (requires internet)
+        if os.getenv("ENABLE_INTERNET_TOOLS", "true").lower() == "true":
+            trend_analyzer = TrendAnalyzerTool(repo_path=repo_path_str)
+            tools.append(trend_analyzer)
+
+        return tools
 
     def _create_agent(self):
         """Create the ReAct agent with custom prompt."""
