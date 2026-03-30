@@ -186,10 +186,22 @@ async def root():
 
 @app.get("/api/health")
 async def health_check():
-    """Detailed health check."""
+    """Detailed health check with LLM provider status."""
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    groq_key = os.getenv("GROQ_API_KEY")
+
+    # Determine which LLM is available
+    llm_provider = None
+    if anthropic_key and anthropic_key != "your_anthropic_api_key_here":
+        llm_provider = "Claude (Anthropic)"
+    elif groq_key and groq_key != "your_groq_api_key_here":
+        llm_provider = "Groq (Free Tier Available)"
+
     return {
         "status": "healthy",
-        "api_key_configured": bool(os.getenv("ANTHROPIC_API_KEY")),
+        "llm_provider": llm_provider or "None configured",
+        "anthropic_configured": bool(anthropic_key and anthropic_key != "your_anthropic_api_key_here"),
+        "groq_configured": bool(groq_key and groq_key != "your_groq_api_key_here"),
         "github_oauth_configured": bool(os.getenv("GITHUB_CLIENT_ID")),
         "timestamp": datetime.now().isoformat()
     }
@@ -203,9 +215,16 @@ async def analyze_repository(request: RepoAnalysisRequest, background_tasks: Bac
     if not request.repo_url:
         raise HTTPException(status_code=400, detail="Repository URL is required")
 
-    # Validate API key
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        raise HTTPException(status_code=500, detail="Anthropic API key not configured")
+    # Validate that at least one LLM API key is configured
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+    groq_key = os.getenv("GROQ_API_KEY")
+
+    if not ((anthropic_key and anthropic_key != "your_anthropic_api_key_here") or
+            (groq_key and groq_key != "your_groq_api_key_here")):
+        raise HTTPException(
+            status_code=500,
+            detail="No LLM API key configured. Set ANTHROPIC_API_KEY or GROQ_API_KEY"
+        )
 
     try:
         # Clone repository

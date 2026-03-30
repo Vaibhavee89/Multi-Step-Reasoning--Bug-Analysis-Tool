@@ -1,4 +1,4 @@
-"""Main agent orchestrator using LangChain and Claude."""
+"""Main agent orchestrator using LangChain with Claude and Groq fallback."""
 
 import os
 from pathlib import Path
@@ -6,7 +6,6 @@ from typing import List, Optional
 from dotenv import load_dotenv
 
 from langchain.agents import AgentExecutor, create_react_agent
-from langchain_anthropic import ChatAnthropic
 from langchain.tools import Tool
 from langchain.prompts import PromptTemplate
 
@@ -18,14 +17,14 @@ from ..tools.git_tools import GitAnalyzerTool
 
 
 class CodeAnalysisAgent:
-    """Main code analysis agent using LangChain ReAct pattern."""
+    """Main code analysis agent using LangChain ReAct pattern with LLM fallback."""
 
     def __init__(self, repo_path: str, model: str = None, verbose: bool = True):
         """Initialize the code analysis agent.
 
         Args:
             repo_path: Path to the code repository to analyze
-            model: Claude model to use (default: from env or claude-sonnet-4-5)
+            model: Model to use (default: from env)
             verbose: Whether to show reasoning steps
         """
         load_dotenv()
@@ -34,19 +33,11 @@ class CodeAnalysisAgent:
         if not self.repo_path.exists():
             raise ValueError(f"Repository path does not exist: {repo_path}")
 
-        # Initialize Claude LLM
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise ValueError("ANTHROPIC_API_KEY not found in environment")
+        # Initialize LLM with fallback support
+        self.llm, self.llm_provider = self._initialize_llm(model)
 
-        model_name = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
-
-        self.llm = ChatAnthropic(
-            model=model_name,
-            anthropic_api_key=api_key,
-            temperature=0,
-            max_tokens=4096
-        )
+        if verbose:
+            print(f"✓ Using {self.llm_provider} for analysis")
 
         # Initialize tools
         self.tools = self._initialize_tools()
@@ -63,6 +54,76 @@ class CodeAnalysisAgent:
             max_iterations=max_iterations,
             handle_parsing_errors=True,
             return_intermediate_steps=True
+        )
+
+    def _initialize_llm(self, model: str = None):
+        """Initialize LLM with fallback support.
+
+        Tries to initialize in this order:
+        1. Claude (if ANTHROPIC_API_KEY is set)
+        2. Groq (if GROQ_API_KEY is set)
+        3. Raises error if neither is available
+
+        Returns:
+            tuple: (llm_instance, provider_name)
+        """
+        anthropic_key = os.getenv("ANTHROPIC_API_KEY")
+        groq_key = os.getenv("GROQ_API_KEY")
+
+        # Try Claude first
+        if anthropic_key and anthropic_key != "your_anthropic_api_key_here":
+            try:
+                from langchain_anthropic import ChatAnthropic
+
+                model_name = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+
+                llm = ChatAnthropic(
+                    model=model_name,
+                    anthropic_api_key=anthropic_key,
+                    temperature=0,
+                    max_tokens=4096
+                )
+
+                # Test the connection
+                try:
+                    llm.invoke("test")
+                    return llm, "Claude (Anthropic)"
+                except Exception as e:
+                    print(f"⚠️  Claude API failed: {str(e)}")
+                    print("Falling back to Groq...")
+
+            except ImportError:
+                print("⚠️  langchain-anthropic not installed, trying Groq...")
+
+        # Fallback to Groq
+        if groq_key and groq_key != "your_groq_api_key_here":
+            try:
+                from langchain_groq import ChatGroq
+
+                groq_model = model or os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+                llm = ChatGroq(
+                    model=groq_model,
+                    groq_api_key=groq_key,
+                    temperature=0,
+                    max_tokens=4096
+                )
+
+                return llm, "Groq (Llama)"
+
+            except ImportError:
+                raise ImportError(
+                    "langchain-groq not installed. Install it with: pip install langchain-groq"
+                )
+            except Exception as e:
+                raise RuntimeError(f"Failed to initialize Groq: {str(e)}")
+
+        # No API keys available
+        raise ValueError(
+            "No LLM API keys found. Please set either:\n"
+            "  - ANTHROPIC_API_KEY (for Claude)\n"
+            "  - GROQ_API_KEY (for Groq - free tier available)\n"
+            "\nGet Groq API key at: https://console.groq.com/"
         )
 
     def _initialize_tools(self) -> List[Tool]:
@@ -114,7 +175,7 @@ class CodeAnalysisAgent:
                 - comprehensive: All of the above
 
         Returns:
-            dict with 'output' and 'intermediate_steps'
+            dict with 'output', 'intermediate_steps', and 'llm_provider'
         """
         # Prepare input for agent
         agent_input = {
@@ -131,7 +192,8 @@ class CodeAnalysisAgent:
             "output": result["output"],
             "intermediate_steps": result.get("intermediate_steps", []),
             "analysis_type": analysis_type,
-            "target": target
+            "target": target,
+            "llm_provider": self.llm_provider
         }
 
     def quick_scan(self, file_path: str) -> dict:
