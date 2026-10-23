@@ -1,28 +1,28 @@
 # Backend API Requirements
 fastapi==0.115.5
 uvicorn[standard]==0.32.1
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 pydantic==2.10.3
 pydantic-settings==2.6.1
 
 # GitHub Integration
 PyGithub==2.5.0
-requests==2.32.3
+requests==2.33.0
 
 # CORS
-python-multipart==0.0.20
+python-multipart==0.0.31
 
 # WebSocket support for real-time updates
 websockets==14.1
 
 # Existing agent dependencies
-langchain==0.3.1
-langchain-anthropic==0.3.0
+langchain==1.4.6
+langchain-anthropic==1.7.6
 anthropic==0.39.0
 langchain-groq==0.2.1
 astroid==3.3.5
 pylint==3.3.1
 mypy==1.13.0
 flake8==7.1.1
-GitPython==3.1.43
+GitPython==3.2.1
 rich==13.9.4
